@@ -109,9 +109,10 @@ impl VsockStream {
     }
 
     pub(crate) fn poll_write_priv(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize>> {
+        debug!("poll_write_priv");
         ready!(self.io.poll_write_ready(cx))?;
 
-        debug!("poll_write_priv");
+        debug!("poll_write_priv was ready");
 
         match self.io.get_ref().write(buf) {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
@@ -130,9 +131,10 @@ impl VsockStream {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<Result<usize>> {
-        ready!(self.io.poll_read_ready(cx, Ready::readable()))?;
-
         debug!("poll_read_priv");
+        ready!(self.io.poll_read_ready(cx, Ready::readable()))?;
+        debug!("poll_read_priv was ready");
+
         match self.io.get_ref().read(buf) {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 self.io.clear_read_ready(cx, Ready::readable())?;
@@ -178,6 +180,7 @@ impl Read for VsockStream {
 
 impl AsyncWrite for VsockStream {
     fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize>> {
+        debug!("poll_write");
         self.poll_write_priv(cx, buf)
     }
 
@@ -201,6 +204,7 @@ impl AsyncRead for VsockStream {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<Result<usize>> {
+        debug!("poll_read");
         self.poll_read_priv(cx, buf)
     }
 }
