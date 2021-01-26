@@ -99,13 +99,19 @@ impl VsockListener {
         debug!("poll_read_ready was ready");
 
         match self.io.get_ref().accept_std() {
-            Ok((io, addr)) => Ok((io, addr)).into(),
+            Ok((io, addr)) => {
+                debug!("vsock accepted std addr: {}", addr);
+                Ok((io, addr)).into()
+            }
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 debug!("vsock would block!");
                 self.io.clear_read_ready(cx, mio::Ready::readable())?;
                 Poll::Pending
             }
-            Err(e) => Err(e).into(),
+            Err(e) => {
+                error!("vsock accept error {}", e);
+                Err(e).into()
+            }
         }
     }
 
