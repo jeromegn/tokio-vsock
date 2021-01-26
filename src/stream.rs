@@ -111,12 +111,17 @@ impl VsockStream {
     pub(crate) fn poll_write_priv(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize>> {
         ready!(self.io.poll_write_ready(cx))?;
 
+        debug!("poll_write_priv");
+
         match self.io.get_ref().write(buf) {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 self.io.clear_write_ready(cx)?;
                 Poll::Pending
             }
-            x => Poll::Ready(x),
+            x => {
+                debug!("vsock wrote {:?} bytes!", x);
+                Poll::Ready(x)
+            }
         }
     }
 
@@ -127,12 +132,16 @@ impl VsockStream {
     ) -> Poll<Result<usize>> {
         ready!(self.io.poll_read_ready(cx, Ready::readable()))?;
 
+        debug!("poll_read_priv");
         match self.io.get_ref().read(buf) {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 self.io.clear_read_ready(cx, Ready::readable())?;
                 Poll::Pending
             }
-            x => Poll::Ready(x),
+            x => {
+                debug!("vsock read {:?} bytes", x);
+                Poll::Ready(x)
+            }
         }
     }
 }
