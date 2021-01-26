@@ -96,13 +96,8 @@ impl VsockListener {
     ) -> Poll<Result<(vsock::VsockStream, SockAddr)>> {
         ready!(self.io.poll_read_ready(cx, mio::Ready::readable()))?;
 
-        debug!("poll_read_ready was ready");
-
         match self.io.get_ref().accept_std() {
-            Ok((io, addr)) => {
-                debug!("vsock accepted std addr: {}", addr);
-                Ok((io, addr)).into()
-            }
+            Ok((io, addr)) => Ok((io, addr)).into(),
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 debug!("vsock would block!");
                 self.io.clear_read_ready(cx, mio::Ready::readable())?;
@@ -130,7 +125,6 @@ impl VsockListener {
     /// Consumes this listener, returning a stream of the sockets this listener
     /// accepts.
     pub fn incoming(self) -> Incoming {
-        debug!("creating incoming");
         Incoming::new(self)
     }
 }
@@ -172,7 +166,6 @@ impl Stream for Incoming {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let (socket, _) = ready!(self.inner.poll_accept(cx))?;
-        debug!("accepted a connection");
         Poll::Ready(Some(Ok(socket)))
     }
 }

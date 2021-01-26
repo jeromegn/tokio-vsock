@@ -104,6 +104,7 @@ impl VsockStream {
 
     pub fn from_std(inner: vsock::VsockStream) -> Result<VsockStream> {
         inner.set_nonblocking(true)?;
+        debug!("set non-blocking on vsock stream");
         Ok(VsockStream { inner })
     }
 

@@ -59,6 +59,7 @@ impl VsockListener {
 
     pub fn from_std(inner: vsock::VsockListener) -> Result<Self> {
         inner.set_nonblocking(true)?;
+        debug!("set non-blocking on vsock listener");
         Ok(Self { inner })
     }
 
