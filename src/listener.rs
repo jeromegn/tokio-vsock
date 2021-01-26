@@ -70,6 +70,7 @@ impl VsockListener {
 
     /// Create a new Virtio socket listener associated with this event loop.
     pub fn bind(addr: &SockAddr) -> Result<Self> {
+        debug!("binding to {}", addr);
         let l = super::mio::VsockListener::bind(addr)?;
         Self::new(l)
     }
@@ -78,8 +79,11 @@ impl VsockListener {
     /// successful.
     pub fn poll_accept(&mut self, cx: &mut Context<'_>) -> Poll<Result<(VsockStream, SockAddr)>> {
         let (io, addr) = ready!(self.poll_accept_std(cx))?;
+        debug!("poll accept std was ready");
         let io = super::mio::VsockStream::from_std(io)?;
+        debug!("made mio vsock stream");
         let io = VsockStream::new(io)?;
+        debug!("made vsock stream");
 
         Ok((io, addr)).into()
     }
@@ -92,9 +96,12 @@ impl VsockListener {
     ) -> Poll<Result<(vsock::VsockStream, SockAddr)>> {
         ready!(self.io.poll_read_ready(cx, mio::Ready::readable()))?;
 
+        debug!("poll_read_ready was ready");
+
         match self.io.get_ref().accept_std() {
             Ok((io, addr)) => Ok((io, addr)).into(),
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                debug!("vsock would block!");
                 self.io.clear_read_ready(cx, mio::Ready::readable())?;
                 Poll::Pending
             }
@@ -117,6 +124,7 @@ impl VsockListener {
     /// Consumes this listener, returning a stream of the sockets this listener
     /// accepts.
     pub fn incoming(self) -> Incoming {
+        debug!("creating incoming");
         Incoming::new(self)
     }
 }
@@ -158,6 +166,7 @@ impl Stream for Incoming {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let (socket, _) = ready!(self.inner.poll_accept(cx))?;
+        debug!("accepted a connection");
         Poll::Ready(Some(Ok(socket)))
     }
 }

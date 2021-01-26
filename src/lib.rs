@@ -15,6 +15,8 @@
  */
 
 extern crate iovec;
+#[macro_use]
+extern crate log;
 
 mod listener;
 mod mio;
