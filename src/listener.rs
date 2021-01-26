@@ -79,11 +79,11 @@ impl VsockListener {
     /// successful.
     pub fn poll_accept(&mut self, cx: &mut Context<'_>) -> Poll<Result<(VsockStream, SockAddr)>> {
         let (io, addr) = ready!(self.poll_accept_std(cx))?;
-        debug!("poll accept std was ready");
+        debug!("poll accept std was ready, addr: {}", addr);
         let io = super::mio::VsockStream::from_std(io)?;
-        debug!("made mio vsock stream");
+        debug!("made mio vsock stream: {:?}", io);
         let io = VsockStream::new(io)?;
-        debug!("made vsock stream");
+        debug!("made vsock stream: {:?}", io);
 
         Ok((io, addr)).into()
     }
