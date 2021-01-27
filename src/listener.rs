@@ -79,7 +79,16 @@ impl VsockListener {
     /// successful.
     pub fn poll_accept(&mut self, cx: &mut Context<'_>) -> Poll<Result<(VsockStream, SockAddr)>> {
         debug!("poll_accept");
-        let (io, addr) = ready!(self.poll_accept_std(cx))?;
+        let (io, addr) = match ready!(self.poll_accept_std(cx)) {
+            Ok((io, addr)) => (io, addr),
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::Interrupted => {
+                    debug!("received interrupted error, return poll pending...");
+                    return Poll::Pending;
+                }
+                _ => return Poll::Ready(Err(e)),
+            },
+        };
         debug!("poll accept std was ready, addr: {}", addr);
         let io = super::mio::VsockStream::from_std(io)?;
         debug!("made mio vsock stream: {:?}", io);
