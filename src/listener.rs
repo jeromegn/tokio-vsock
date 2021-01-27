@@ -78,6 +78,7 @@ impl VsockListener {
     /// Attempt to accept a connection and create a new connected socket if
     /// successful.
     pub fn poll_accept(&mut self, cx: &mut Context<'_>) -> Poll<Result<(VsockStream, SockAddr)>> {
+        debug!("poll_accept");
         let (io, addr) = ready!(self.poll_accept_std(cx))?;
         debug!("poll accept std was ready, addr: {}", addr);
         let io = super::mio::VsockStream::from_std(io)?;
@@ -94,10 +95,14 @@ impl VsockListener {
         &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<Result<(vsock::VsockStream, SockAddr)>> {
+        debug!("poll_accept_std");
         ready!(self.io.poll_read_ready(cx, mio::Ready::readable()))?;
 
         match self.io.get_ref().accept_std() {
-            Ok((io, addr)) => Ok((io, addr)).into(),
+            Ok((io, addr)) => {
+                debug!("vsock accepted {} => {:?}", addr, io);
+                Ok((io, addr)).into()
+            }
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 debug!("vsock would block!");
                 self.io.clear_read_ready(cx, mio::Ready::readable())?;
