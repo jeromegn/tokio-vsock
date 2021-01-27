@@ -116,12 +116,8 @@ impl VsockStream {
 
         match self.io.get_ref().write(buf) {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                if let Err(e) = self.io.clear_write_ready(cx) {
-                    debug!("poll_write clear_write_ready error: {}", e);
-                    Poll::Ready(Err(e))
-                } else {
-                    Poll::Pending
-                }
+                self.io.clear_write_ready(cx)?;
+                Poll::Pending
             }
             x => {
                 debug!("vsock wrote {:?} bytes!", x);
@@ -141,12 +137,8 @@ impl VsockStream {
 
         match self.io.get_ref().read(buf) {
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                if let Err(e) = self.io.clear_read_ready(cx, Ready::readable()) {
-                    debug!("poll_read clear_read_ready error: {}", e);
-                    Poll::Ready(Err(e))
-                } else {
-                    Poll::Pending
-                }
+                self.io.clear_read_ready(cx, Ready::readable())?;
+                Poll::Pending
             }
             x => {
                 debug!("vsock read {:?} bytes", x);
