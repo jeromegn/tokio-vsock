@@ -37,7 +37,7 @@
  * limitations under the License.
  */
 
-use std::io::{ErrorKind, Result};
+use std::io::Result;
 use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 
 use mio::unix::EventedFd;

@@ -96,20 +96,23 @@ impl VsockListener {
         cx: &mut Context<'_>,
     ) -> Poll<Result<(vsock::VsockStream, SockAddr)>> {
         debug!("poll_accept_std");
-        ready!(self.io.poll_read_ready(cx, mio::Ready::readable()))?;
+        loop {
+            ready!(self.io.poll_read_ready(cx, mio::Ready::readable()))?;
 
-        match self.io.get_ref().accept_std() {
-            Ok((io, addr)) => {
-                debug!("vsock accepted {} => {:?}", addr, io);
-                Ok((io, addr)).into()
-            }
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                self.io.clear_read_ready(cx, mio::Ready::readable())?;
-                Poll::Pending
-            }
-            Err(e) => {
-                error!("vsock accept error {}", e);
-                Err(e).into()
+            match self.io.get_ref().accept_std() {
+                Ok((io, addr)) => {
+                    debug!("vsock accepted {} => {:?}", addr, io);
+                    return Ok((io, addr)).into();
+                }
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                    self.io.clear_read_ready(cx, mio::Ready::readable())?;
+                    continue;
+                }
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) => {
+                    error!("vsock accept error {}", e);
+                    return Err(e).into();
+                }
             }
         }
     }

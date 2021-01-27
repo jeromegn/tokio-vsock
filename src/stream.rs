@@ -110,18 +110,24 @@ impl VsockStream {
 
     pub(crate) fn poll_write_priv(&self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<Result<usize>> {
         debug!("poll_write_priv");
-        ready!(self.io.poll_write_ready(cx))?;
+        loop {
+            ready!(self.io.poll_write_ready(cx))?;
 
-        debug!("poll_write_priv was ready");
+            debug!("poll_write_priv was ready");
 
-        match self.io.get_ref().write(buf) {
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                self.io.clear_write_ready(cx)?;
-                Poll::Pending
-            }
-            x => {
-                debug!("vsock wrote {:?} bytes!", x);
-                Poll::Ready(x)
+            match self.io.get_ref().write(buf) {
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                    self.io.clear_write_ready(cx)?;
+                    continue;
+                }
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => {
+                    debug!("write interrupted, looping");
+                    continue;
+                }
+                x => {
+                    debug!("vsock wrote {:?} bytes!", x);
+                    return Poll::Ready(x);
+                }
             }
         }
     }
@@ -131,18 +137,23 @@ impl VsockStream {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<Result<usize>> {
-        debug!("poll_read_priv");
-        ready!(self.io.poll_read_ready(cx, Ready::readable()))?;
-        debug!("poll_read_priv was ready");
+        loop {
+            ready!(self.io.poll_read_ready(cx, Ready::readable()))?;
+            debug!("poll_read_priv was ready");
 
-        match self.io.get_ref().read(buf) {
-            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                self.io.clear_read_ready(cx, Ready::readable())?;
-                Poll::Pending
-            }
-            x => {
-                debug!("vsock read {:?} bytes", x);
-                Poll::Ready(x)
+            match self.io.get_ref().read(buf) {
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                    self.io.clear_read_ready(cx, Ready::readable())?;
+                    continue;
+                }
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => {
+                    debug!("read interrupted, looping");
+                    continue;
+                }
+                x => {
+                    debug!("vsock read {:?} bytes", x);
+                    return Poll::Ready(x);
+                }
             }
         }
     }
