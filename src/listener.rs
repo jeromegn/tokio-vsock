@@ -105,8 +105,12 @@ impl VsockListener {
             }
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
                 debug!("vsock would block!");
-                self.io.clear_read_ready(cx, mio::Ready::readable())?;
-                Poll::Pending
+                if let Err(e) = self.io.clear_read_ready(cx, mio::Ready::readable()) {
+                    debug!("vsock clear_read_ready error: {}", e);
+                    Poll::Ready(Err(e))
+                } else {
+                    Poll::Pending
+                }
             }
             Err(e) => {
                 error!("vsock accept error {}", e);
